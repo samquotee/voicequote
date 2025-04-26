@@ -32,8 +32,11 @@ BOND_MAPPINGS = {
     # Spain
     'SPAIN': 'SPGB', 'SPGB': 'SPGB', 'SPEEGEEBEE': 'SPGB',
     # Finland
-    'FINLAND': 'RFGB', 'FINNY': 'RFGB', 'RFGB': 'RFGB', 'RIFGB': 'RFGB'
+    'FINLAND': 'RFGB', 'FINNY': 'RFGB', 'RFGB': 'RFGB'
 }
+
+# Add this near the top, after BOND_MAPPINGS
+VALID_BONDS = {'OAT', 'BTP', 'DBR', 'PGB', 'SPGB', 'NETH', 'RAGB', 'RFGB', 'BGB'}
 
 @app.route('/')
 def index():
@@ -56,6 +59,7 @@ def transcribe():
         # Transcribe the audio with English language specified
         result = model.transcribe(temp_audio_path, language="en")
         transcription = result['text']
+        print("Transcription:", transcription)
         
         # Parse the quote
         quote = parse_quote(transcription)
@@ -78,6 +82,55 @@ def parse_quote(text):
     # Convert to uppercase for standardization
     text = text.upper()
     
+    print("Attempting to match:", text)
+    
+    # Most flexible switch pattern with debug prints and transcription error handling
+    pattern_switch = (
+        r'I CAN (BUY|SELL)\s+([A-Z]+)\s+(?:OF\s+)?([A-Z]+)\s+(\d{2})'
+        r'\s+AGAINST\s+(?:THE\s+)?([A-Z]+)\s+(?:OF\s+)?([A-Z]+)\s+(\d{2})'
+        r'(?:,?\s+(?:I\s+)?(PICK|PEAK|PIC|GIVE)\s+(\d+))?'
+        r'(?:\s+IN\s+(\d+)\s+MILLION)?'
+    )
+    match_switch = re.search(pattern_switch, text)
+    if match_switch:
+        print("Switch pattern matched!")
+        action, bond1, month1, year1, bond2, month2, year2, price_type, price, size = match_switch.groups()
+        print(f"Matched groups: {match_switch.groups()}")
+        
+        # Convert bond types to standard format
+        bond1 = BOND_MAPPINGS.get(bond1, bond1)
+        bond2 = BOND_MAPPINGS.get(bond2, bond2)
+        
+        # Convert month names to numbers
+        month_map = {
+            'JANUARY': '01', 'FEBRUARY': '02', 'MARCH': '03', 'APRIL': '04',
+            'MAY': '05', 'JUNE': '06', 'JULY': '07', 'AUGUST': '08',
+            'SEPTEMBER': '09', 'OCTOBER': '10', 'NOVEMBER': '11', 'DECEMBER': '12'
+        }
+        month1_num = month_map.get(month1, month1)
+        month2_num = month_map.get(month2, month2)
+        
+        # Normalize price_type to PICK if it's PEAK or PIC
+        if price_type in ('PEAK', 'PIC'):
+            price_type = 'PICK'
+        
+        # Format the switch quote
+        base = f"I CAN {action} {bond1} {month1_num}/{year1} VS {bond2} {month2_num}/{year2}"
+        if price_type and price:
+            base += f" {price_type} {price}"
+        if size:
+            base += f" IN {size}M"
+        
+        print("Formatted output:", base)
+        
+        # Check if both bond types are valid
+        if bond1 not in VALID_BONDS or bond2 not in VALID_BONDS:
+            return "No valid bond quote found"
+        
+        return base
+    else:
+        print("Switch pattern did not match")
+    
     # Pattern 6: Simple format without I'm (e.g., "OAT May 55 12 offer 72 million")
     pattern6 = r'([A-Z]+)\s+([A-Z]+)\s+(\d{2})\s+(\d+)\s+OFFER\s+(\d+)\s+MILLION'
     match6 = re.search(pattern6, text)
@@ -97,6 +150,10 @@ def parse_quote(text):
             'SEPTEMBER': '09', 'OCTOBER': '10', 'NOVEMBER': '11', 'DECEMBER': '12'
         }
         month_num = month_map.get(month, month)
+        
+        # Check if bond type is valid
+        if bond_type not in VALID_BONDS:
+            return "No valid bond quote found"
         
         # Format the quote exactly as required
         return f"{bond_type} {month_num}/{year} {price} OFFER IN {size}"
@@ -121,6 +178,10 @@ def parse_quote(text):
         }
         month_num = month_map.get(month, month)
         
+        # Check if bond type is valid
+        if bond_type not in VALID_BONDS:
+            return "No valid bond quote found"
+        
         # Format the quote exactly as required
         return f"{bond_type} {month_num}/{year} {price} OFFER IN {size}"
     
@@ -143,6 +204,10 @@ def parse_quote(text):
             'SEPTEMBER': '09', 'OCTOBER': '10', 'NOVEMBER': '11', 'DECEMBER': '12'
         }
         month_num = month_map.get(month, month)
+        
+        # Check if bond type is valid
+        if bond_type not in VALID_BONDS:
+            return "No valid bond quote found"
         
         # Remove any decimal point from price
         price = price.split('.')[0]
@@ -169,6 +234,10 @@ def parse_quote(text):
             'SEPTEMBER': '09', 'OCTOBER': '10', 'NOVEMBER': '11', 'DECEMBER': '12'
         }
         month_num = month_map.get(month, month)
+        
+        # Check if bond type is valid
+        if bond_type not in VALID_BONDS:
+            return "No valid bond quote found"
         
         # Determine if it's an offer or bid
         quote_type = "OFFER" if action == "SELL" else "BID"
@@ -199,6 +268,10 @@ def parse_quote(text):
         }
         month_num = month_map.get(month, month)
         
+        # Check if bond type is valid
+        if bond_type not in VALID_BONDS:
+            return "No valid bond quote found"
+        
         # Format the quote exactly as required
         return f"CAN {action} {size} {bond_type} {month_num}/{year}"
     
@@ -221,6 +294,10 @@ def parse_quote(text):
             'SEPTEMBER': '09', 'OCTOBER': '10', 'NOVEMBER': '11', 'DECEMBER': '12'
         }
         month_num = month_map.get(month, month)
+        
+        # Check if bond type is valid
+        if bond_type not in VALID_BONDS:
+            return "No valid bond quote found"
         
         # Format the quote exactly as required
         return f"CAN {action} {size} {bond_type} {month_num}/{year}"
