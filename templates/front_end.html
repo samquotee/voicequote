@@ -1,125 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Voice Quote Transcription</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin: 20px 0;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-        }
-        button:disabled {
-            background-color: #cccccc;
-        }
-        #result {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: #f9f9f9;
-        }
-        .recording {
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-    </style>
+    <title>Voice Quote</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
-        <h1>Voice Quote Transcription</h1>
-        <div class="controls">
-            <button id="startButton">Start Recording</button>
-            <button id="stopButton" disabled>Stop Recording</button>
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
+        <div class="quote-box">
+            <div class="quote-text"></div>
         </div>
-        <div id="result">
-            <p>Click "Start Recording" to begin. Speak your financial quote clearly.</p>
-        </div>
+        <button id="recordButton" class="record-button">QUOTE!</button>
     </div>
-
-    <script>
-        let mediaRecorder;
-        let audioChunks = [];
-        const startButton = document.getElementById('startButton');
-        const stopButton = document.getElementById('stopButton');
-        const resultDiv = document.getElementById('result');
-
-        startButton.addEventListener('click', async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    const formData = new FormData();
-                    formData.append('file', audioBlob, 'recording.wav');
-                    
-                    resultDiv.innerHTML = '<p>Processing transcription...</p>';
-                    
-                    try {
-                        const response = await fetch('/transcribe', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        const data = await response.json();
-                        resultDiv.innerHTML = `
-                            <p><strong>Transcription:</strong> ${data.transcription}</p>
-                            <p><strong>Quote:</strong> ${JSON.stringify(data.quote)}</p>
-                        `;
-                    } catch (error) {
-                        resultDiv.innerHTML = `<p>Error: ${error.message}</p>`;
-                    }
-                };
-
-                mediaRecorder.start();
-                startButton.disabled = true;
-                stopButton.disabled = false;
-                resultDiv.innerHTML = '<p class="recording">Recording... Speak your quote now.</p>';
-            } catch (error) {
-                resultDiv.innerHTML = `<p>Error: ${error.message}</p>`;
-            }
-        });
-
-        stopButton.addEventListener('click', () => {
-            mediaRecorder.stop();
-            startButton.disabled = false;
-            stopButton.disabled = true;
-        });
-    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html> 
