@@ -37,3 +37,6 @@ A web application that transcribes voice recordings and extracts financial quote
 ## Note
 
 The first time you run the application, it will download the Whisper model (approximately 1GB). This may take a few minutes depending on your internet connection. 
+
+PYTHON_VERSION = 3.11.0
+PORT = 10000 

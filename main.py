@@ -8,7 +8,7 @@ from datetime import datetime
 app = Flask(__name__)
 
 # Initialize Whisper model
-model = whisper.load_model("base")
+model = whisper.load_model("small")
 
 # Bond type mappings with common transcription errors
 BOND_MAPPINGS = {
@@ -16,16 +16,17 @@ BOND_MAPPINGS = {
     'FRANCE': 'OAT', 'OAT': 'OAT', 'OATS': 'OAT',
     # Italy
     'ITALY': 'BTP', 'BTP': 'BTP', 'BTPS': 'BTP', 'BEEPS': 'BTP',
-    # Germany - Added more phonetic variations for BUND/DBR
+    # Germany
     'GERMANY': 'DBR', 'BUND': 'DBR', 'DBR': 'DBR', 'WOOD': 'DBR', 'BOND': 'DBR',
     'BOON': 'DBR', 'BOOND': 'DBR', 'BUN': 'DBR', 'BUNT': 'DBR', 'BUNN': 'DBR',
-    'BUNDT': 'DBR', 'BUNDE': 'DBR', 'BUNDA': 'DBR', 'BUNDER': 'DBR',
+    'BUNDT': 'DBR', 'BUNDE': 'DBR', 'BUNDA': 'DBR', 'BUNDER': 'DBR', 'BOUND': 'DBR',
+    'BUIND': 'DBR', 'BUIN': 'DBR', 'BUINN': 'DBR', 'BUINT': 'DBR',
     # Netherlands
-    'HOLLAND': 'NETHER', 'NETHER': 'NETHER', 'GUILDER': 'NETHER', 'NETHERLANDS': 'NETHER',
+    'HOLLAND': 'NETH', 'NETHER': 'NETH', 'GUILDER': 'NETH', 'NETHERLANDS': 'NETH',
     # Austria
     'AUSTRIA': 'RAGB', 'RAGB': 'RAGB', 'RAG': 'RAGB',
     # Belgium
-    'BELGIUM': 'BGB', 'BGB': 'BGB', 'BEEGEEBEE': 'BGB',
+    'BELGIUM': 'BGB', 'BGB': 'BGB', 'BEEGEEBEE': 'BGB', 'BELG': 'BGB', 'BELGIAN': 'BGB',
     # Portugal
     'PORTUGAL': 'PGB', 'PGB': 'PGB', 'PEEGEEBEE': 'PGB',
     # Spain
@@ -77,11 +78,112 @@ def parse_quote(text):
     # Convert to uppercase for standardization
     text = text.upper()
     
-    # Pattern 1: Bond and maturity first, then action and size
-    pattern1 = r'([A-Z]+)\s+([A-Z]+)\s+(\d{2}),?\s+I CAN (BUY|SELL)\s+(\d+)\s*(?:MILLION|M)'
-    match1 = re.search(pattern1, text)
-    if match1:
-        bond_type, month, year, action, size = match1.groups()
+    # Pattern 6: Simple format without I'm (e.g., "OAT May 55 12 offer 72 million")
+    pattern6 = r'([A-Z]+)\s+([A-Z]+)\s+(\d{2})\s+(\d+)\s+OFFER\s+(\d+)\s+MILLION'
+    match6 = re.search(pattern6, text)
+    if match6:
+        bond_type, month, year, price, size = match6.groups()
+        
+        # Convert size to standard format
+        size = f"{size}M"
+        
+        # Convert bond type to standard format
+        bond_type = BOND_MAPPINGS.get(bond_type, bond_type)
+        
+        # Convert month to number
+        month_map = {
+            'JANUARY': '01', 'FEBRUARY': '02', 'MARCH': '03', 'APRIL': '04',
+            'MAY': '05', 'JUNE': '06', 'JULY': '07', 'AUGUST': '08',
+            'SEPTEMBER': '09', 'OCTOBER': '10', 'NOVEMBER': '11', 'DECEMBER': '12'
+        }
+        month_num = month_map.get(month, month)
+        
+        # Format the quote exactly as required
+        return f"{bond_type} {month_num}/{year} {price} OFFER IN {size}"
+    
+    # Pattern 5: New simple format (e.g., "OAT May 55, I'm 7 offer in 12 million")
+    pattern5 = r'([A-Z]+)\s+([A-Z]+)\s+(\d{2}),?\s+(?:I\'M|I AM)\s+(\d+)\s+OFFER\s+IN\s+(\d+)\s+MILLION'
+    match5 = re.search(pattern5, text)
+    if match5:
+        bond_type, month, year, price, size = match5.groups()
+        
+        # Convert size to standard format
+        size = f"{size}M"
+        
+        # Convert bond type to standard format
+        bond_type = BOND_MAPPINGS.get(bond_type, bond_type)
+        
+        # Convert month to number
+        month_map = {
+            'JANUARY': '01', 'FEBRUARY': '02', 'MARCH': '03', 'APRIL': '04',
+            'MAY': '05', 'JUNE': '06', 'JULY': '07', 'AUGUST': '08',
+            'SEPTEMBER': '09', 'OCTOBER': '10', 'NOVEMBER': '11', 'DECEMBER': '12'
+        }
+        month_num = month_map.get(month, month)
+        
+        # Format the quote exactly as required
+        return f"{bond_type} {month_num}/{year} {price} OFFER IN {size}"
+    
+    # Pattern 4: New format with bond first (e.g., "BTP September 17, 12 offer in 40 million")
+    pattern4 = r'([A-Z]+)\s+([A-Z]+)\s+(\d{2}),?\s+(\d+)\s+OFFER\s+IN\s+(\d+)\s+MILLION'
+    match4 = re.search(pattern4, text)
+    if match4:
+        bond_type, month, year, price, size = match4.groups()
+        
+        # Convert size to standard format
+        size = f"{size}M"
+        
+        # Convert bond type to standard format
+        bond_type = BOND_MAPPINGS.get(bond_type, bond_type)
+        
+        # Convert month to number
+        month_map = {
+            'JANUARY': '01', 'FEBRUARY': '02', 'MARCH': '03', 'APRIL': '04',
+            'MAY': '05', 'JUNE': '06', 'JULY': '07', 'AUGUST': '08',
+            'SEPTEMBER': '09', 'OCTOBER': '10', 'NOVEMBER': '11', 'DECEMBER': '12'
+        }
+        month_num = month_map.get(month, month)
+        
+        # Remove any decimal point from price
+        price = price.split('.')[0]
+        
+        # Format the quote exactly as required
+        return f"{bond_type} {month_num}/{year} {price} OFFER IN {size}"
+    
+    # Pattern 3: New format with price (e.g., "I can sell 30 million of bond September 72 at 79")
+    pattern3 = r'I CAN (BUY|SELL)\s+(\d+)\s*(?:MILLION|M)\s*(?:OF)?\s*([A-Z]+)\s*([A-Z]+)\s*(\d{2})\s*(?:AT|IN)\s*(\d+\.?\d*)'
+    match3 = re.search(pattern3, text)
+    if match3:
+        action, size, bond_type, month, year, price = match3.groups()
+        
+        # Convert size to standard format
+        size = f"{size}M"
+        
+        # Convert bond type to standard format
+        bond_type = BOND_MAPPINGS.get(bond_type, bond_type)
+        
+        # Convert month to number
+        month_map = {
+            'JANUARY': '01', 'FEBRUARY': '02', 'MARCH': '03', 'APRIL': '04',
+            'MAY': '05', 'JUNE': '06', 'JULY': '07', 'AUGUST': '08',
+            'SEPTEMBER': '09', 'OCTOBER': '10', 'NOVEMBER': '11', 'DECEMBER': '12'
+        }
+        month_num = month_map.get(month, month)
+        
+        # Determine if it's an offer or bid
+        quote_type = "OFFER" if action == "SELL" else "BID"
+        
+        # Remove any decimal point from price
+        price = price.split('.')[0]
+        
+        # Format the quote exactly as required
+        return f"{bond_type} {month_num}/{year} {price} {quote_type} IN {size}"
+    
+    # Pattern 2: Original format without price (e.g., "I can buy 72 million of bund October 71")
+    pattern2 = r'I CAN (BUY|SELL)\s+(\d+)\s*(?:MILLION|M)\s*(?:OF)?\s*([A-Z]+)\s*([A-Z]+)\s*(\d{2})'
+    match2 = re.search(pattern2, text)
+    if match2:
+        action, size, bond_type, month, year = match2.groups()
         
         # Convert size to standard format
         size = f"{size}M"
@@ -100,11 +202,11 @@ def parse_quote(text):
         # Format the quote exactly as required
         return f"CAN {action} {size} {bond_type} {month_num}/{year}"
     
-    # Pattern 2: Original format (action first)
-    pattern2 = r'I CAN (BUY|SELL)\s+(\d+)\s*(?:MILLION|M)\s*(?:OF)?\s*([A-Z]+)\s*([A-Z]+)\s*(\d{2})'
-    match2 = re.search(pattern2, text)
-    if match2:
-        action, size, bond_type, month, year = match2.groups()
+    # Pattern 1: Bond and maturity first, then action and size
+    pattern1 = r'([A-Z]+)\s+([A-Z]+)\s+(\d{2}),?\s+I CAN (BUY|SELL)\s+(\d+)\s*(?:MILLION|M)'
+    match1 = re.search(pattern1, text)
+    if match1:
+        bond_type, month, year, action, size = match1.groups()
         
         # Convert size to standard format
         size = f"{size}M"
