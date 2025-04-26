@@ -4,6 +4,21 @@ let isRecording = false;
 const recordButton = document.getElementById('recordButton');
 const quoteText = document.querySelector('.quote-text');
 
+// Function to copy text to clipboard
+async function copyToClipboard(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        // Flash the quote box to indicate successful copy
+        quoteText.style.transition = 'background-color 0.3s';
+        quoteText.style.backgroundColor = '#333333';
+        setTimeout(() => {
+            quoteText.style.backgroundColor = 'transparent';
+        }, 300);
+    } catch (err) {
+        console.error('Failed to copy text: ', err);
+    }
+}
+
 recordButton.addEventListener('click', async () => {
     if (!isRecording) {
         // Start recording
@@ -29,7 +44,13 @@ recordButton.addEventListener('click', async () => {
                         body: formData
                     });
                     const data = await response.json();
-                    quoteText.textContent = data.quote || data.transcription || '+QUOTE';
+                    const quote = data.quote || data.transcription || '+QUOTE';
+                    quoteText.textContent = quote;
+                    
+                    // Automatically copy the quote to clipboard
+                    if (quote !== '+QUOTE') {
+                        await copyToClipboard(quote);
+                    }
                 } catch (error) {
                     quoteText.textContent = 'Error: Try again';
                 }
